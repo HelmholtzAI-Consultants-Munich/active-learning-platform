@@ -1,24 +1,26 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
-from PyQt5.QtWidgets import (
-    QPushButton,
-    QVBoxLayout,
-    QFileSystemModel,
-    QHBoxLayout,
-    QLabel,
-    QTreeView,
-    QProgressBar,
-    QShortcut,
+from qtpy.QtWidgets import (
+                            QPushButton,
+                            QVBoxLayout,
+                            QHBoxLayout,
+                            QLabel,
+                            QTreeView,
+                            QProgressBar,
+                            QShortcut,
+                            QApplication
 )
-from PyQt5.QtCore import Qt, QThread, QModelIndex, pyqtSignal
+from PyQt5.QtCore import Qt, QModelIndex, QThread, pyqtSignal, QSize
 from PyQt5.QtGui import QKeySequence
 
-from dcp_client.utils import settings
-from dcp_client.utils.utils import IconProvider
-
+from dcp_client.gui._custom_qt_helpers import IconProvider, CustomItemDelegate
 from dcp_client.gui.napari_window import NapariWindow
 from dcp_client.gui._my_widget import MyWidget
+from dcp_client.gui._filesystem_wig import MyQFileSystemModel
+
+from dcp_client.utils import settings
 
 if TYPE_CHECKING:
     from dcp_client.app import Application
@@ -77,10 +79,6 @@ class MainWindow(MyWidget):
     Opens the main window of the app where selected images in both directories are listed.
     User can view the images, train the model to get the labels, and visualise the result.
 
-    :param eval_data_path: Chosen path to images without labeles, selected by the user in the WelcomeWindow
-    :type eval_data_path: string
-    :param train_data_path: Chosen path to images with labeles, selected by the user in the WelcomeWindow
-    :type train_data_path: string
     """
 
     def __init__(self, app: Application) -> None:
@@ -94,33 +92,63 @@ class MainWindow(MyWidget):
         :param app.train_data_path: Chosen path to images with labels, selected by the user in the WelcomeWindow.
         :type app.train_data_path: str
         """
+
         super().__init__()
         self.app = app
-        self.title = "Data Overview"
+        self.title = "DCP: Data Overview"
         self.worker_thread = None
+        self.accepted_types = ['*'+end for end in settings.accepted_types]
         self.main_window()
 
     def main_window(self) -> None:
         """Sets up the GUI"""
         self.setWindowTitle(self.title)
-        # self.resize(1000, 1500)
+        self.resize(1000, 700)
+        self.setStyleSheet("background-color: #f3f3f3;")
+
         main_layout = QVBoxLayout()
         dir_layout = QHBoxLayout()
 
+        # create three boxes, for the three folder layouts
         self.uncurated_layout = QVBoxLayout()
         self.inprogress_layout = QVBoxLayout()
         self.curated_layout = QVBoxLayout()
-
+        
+        # fill first box - uncurated layout
         self.eval_dir_layout = QVBoxLayout()
         self.eval_dir_layout.setContentsMargins(0, 0, 0, 0)
+        # add label
         self.label_eval = QLabel(self)
-        self.label_eval.setText("Uncurated dataset")
+        self.label_eval.setText("Uncurated Dataset")
+        self.label_eval.setMinimumHeight(50)
+        self.label_eval.setMinimumWidth(200)
+        self.label_eval.setAlignment(Qt.AlignCenter)
+        self.label_eval.setStyleSheet(
+            """
+            font-size: 20px;
+            font-weight: bold; 
+            background-color: #015998;
+            color: #ffffff;
+            border-radius: 5px; 
+            padding: 8px 16px;"""
+        )
         self.eval_dir_layout.addWidget(self.label_eval)
         # add eval dir list
-        model_eval = QFileSystemModel()
+        model_eval = MyQFileSystemModel(app=self.app)
+        model_eval.setNameFilters(self.accepted_types)
+        model_eval.setNameFilterDisables(False)  # Enable the filters
         model_eval.setIconProvider(IconProvider())
+        model_eval.sort(0, Qt.AscendingOrder)
+
         self.list_view_eval = QTreeView(self)
+        self.list_view_eval.setToolTip("Select an image, click it, then press Enter")
+        self.list_view_eval.setIconSize(QSize(300, 300))
+        self.list_view_eval.setStyleSheet("background-color: #ffffff")
         self.list_view_eval.setModel(model_eval)
+        
+        model_eval.setRootPath("/")
+        self.list_view_eval.setItemDelegate(CustomItemDelegate())
+
         for i in range(1, 4):
             self.list_view_eval.hideColumn(i)
         # self.list_view_eval.setFixedSize(600, 600)
@@ -132,11 +160,21 @@ class MainWindow(MyWidget):
         self.eval_dir_layout.addWidget(self.list_view_eval)
         self.uncurated_layout.addLayout(self.eval_dir_layout)
 
-        # add buttons
+        # add run inference button
         self.inference_button = QPushButton("Generate Labels", self)
-        self.inference_button.clicked.connect(
-            self.on_run_inference_button_clicked
-        )  # add selected image
+        self.inference_button.setStyleSheet(
+            """QPushButton 
+            { 
+                  background-color: #3d81d1;
+                  font-size: 12px; 
+                  font-weight: bold;
+                  color: #ffffff; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+            "QPushButton:hover { background-color: #7bc432; }"
+            "QPushButton:pressed { background-color: #7bc432; }"
+        )
+        self.inference_button.clicked.connect(self.on_run_inference_button_clicked)
         self.uncurated_layout.addWidget(self.inference_button, alignment=Qt.AlignCenter)
 
         dir_layout.addLayout(self.uncurated_layout)
@@ -144,15 +182,30 @@ class MainWindow(MyWidget):
         # In progress layout
         self.inprogr_dir_layout = QVBoxLayout()
         self.inprogr_dir_layout.setContentsMargins(0, 0, 0, 0)
+        # Add in progress layout
         self.label_inprogr = QLabel(self)
+        self.label_inprogr.setMinimumHeight(50)
+        self.label_inprogr.setMinimumWidth(200)
+        self.label_inprogr.setAlignment(Qt.AlignCenter)
+        self.label_inprogr.setStyleSheet(
+            "font-size: 20px; font-weight: bold; background-color: #015998; color: #ffffff; border-radius: 5px; padding: 8px 16px;"
+        )
         self.label_inprogr.setText("Curation in progress")
         self.inprogr_dir_layout.addWidget(self.label_inprogr)
         # add in progress dir list
-        model_inprogr = QFileSystemModel()
+        model_inprogr = MyQFileSystemModel(app=self.app)
+        model_inprogr.setNameFilters(self.accepted_types)
+        model_inprogr.setNameFilterDisables(False)  # Enable the filters
         # self.list_view = QListView(self)
         self.list_view_inprogr = QTreeView(self)
+        self.list_view_inprogr.setToolTip("Select an image, click it, then press Enter")
+        self.list_view_inprogr.setStyleSheet("background-color: #ffffff")
         model_inprogr.setIconProvider(IconProvider())
         self.list_view_inprogr.setModel(model_inprogr)
+
+        model_inprogr.setRootPath("/")
+        self.list_view_inprogr.setItemDelegate(CustomItemDelegate())
+
         for i in range(1, 4):
             self.list_view_inprogr.hideColumn(i)
         # self.list_view_inprogr.setFixedSize(600, 600)
@@ -163,34 +216,46 @@ class MainWindow(MyWidget):
         self.inprogr_dir_layout.addWidget(self.list_view_inprogr)
         self.inprogress_layout.addLayout(self.inprogr_dir_layout)
 
-        self.launch_nap_button = QPushButton("View image and fix label", self)
-        self.launch_nap_button.clicked.connect(
-            self.on_launch_napari_button_clicked
-        )  # add selected image
-        self.inprogress_layout.addWidget(
-            self.launch_nap_button, alignment=Qt.AlignCenter
+        # the launch napari viewer button is currently hidden!
+        launch_nap_button = QPushButton()
+        launch_nap_button.setStyleSheet(
+            "QPushButton { background-color: transparent; border: none; border-radius: 5px; padding: 8px 16px; }"
         )
+
+        launch_nap_button.setEnabled(False)
+        self.inprogress_layout.addWidget(launch_nap_button, alignment=Qt.AlignCenter)
+        dir_layout.addLayout(self.inprogress_layout)
         # Create a shortcut for the Enter key to click the button
         enter_shortcut = QShortcut(QKeySequence(Qt.Key_Return), self)
         enter_shortcut.activated.connect(self.on_launch_napari_button_clicked)
-
-        dir_layout.addLayout(self.inprogress_layout)
 
         # Curated layout
         self.train_dir_layout = QVBoxLayout()
         self.train_dir_layout.setContentsMargins(0, 0, 0, 0)
         self.label_train = QLabel(self)
         self.label_train.setText("Curated dataset")
+        self.label_train.setMinimumHeight(50)
+        self.label_train.setMinimumWidth(200)
+        self.label_train.setAlignment(Qt.AlignCenter)
+        self.label_train.setStyleSheet(
+            "font-size: 20px; font-weight: bold; background-color: #015998; color: #ffffff; border-radius: 5px; padding: 8px 16px;"
+        )
         self.train_dir_layout.addWidget(self.label_train)
         # add train dir list
-        model_train = QFileSystemModel()
+        model_train = MyQFileSystemModel(app=self.app)
+        model_train.setNameFilters(self.accepted_types)
+        model_train.setNameFilterDisables(False)  # Enable the filters
         # self.list_view = QListView(self)
         self.list_view_train = QTreeView(self)
+        self.list_view_train.setToolTip("Select an image, click it, then press Enter")
+        self.list_view_train.setStyleSheet("background-color: #ffffff")
         model_train.setIconProvider(IconProvider())
         self.list_view_train.setModel(model_train)
+        model_train.setRootPath("/")
+        self.list_view_train.setItemDelegate(CustomItemDelegate())
+
         for i in range(1, 4):
             self.list_view_train.hideColumn(i)
-        # self.list_view_train.setFixedSize(600, 600)
         self.list_view_train.setRootIndex(
             model_train.setRootPath(self.app.train_data_path)
         )
@@ -198,23 +263,37 @@ class MainWindow(MyWidget):
         self.train_dir_layout.addWidget(self.list_view_train)
         self.curated_layout.addLayout(self.train_dir_layout)
 
+        # add train button
         self.train_button = QPushButton("Train Model", self)
-        self.train_button.clicked.connect(
-            self.on_train_button_clicked
-        )  # add selected image
+        self.train_button.setStyleSheet(
+            """QPushButton 
+            { 
+                  background-color: #3d81d1;
+                  font-size: 12px; 
+                  font-weight: bold;
+                  color: #ffffff; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+            "QPushButton:hover { background-color: #7bc432; }"
+            "QPushButton:pressed { background-color: #7bc432; }"
+        )
+        self.train_button.clicked.connect(self.on_train_button_clicked)
         self.curated_layout.addWidget(self.train_button, alignment=Qt.AlignCenter)
-        dir_layout.addLayout(self.curated_layout)
 
+        dir_layout.addLayout(self.curated_layout)
         main_layout.addLayout(dir_layout)
 
         # add progress bar
         progress_layout = QHBoxLayout()
         progress_layout.addStretch(1)
         self.progress_bar = QProgressBar(self)
+        self.progress_bar.setMinimumWidth(1000)
+        self.progress_bar.setAlignment(Qt.AlignCenter)
         self.progress_bar.setRange(0, 1)
         progress_layout.addWidget(self.progress_bar)
         main_layout.addLayout(progress_layout)
 
+        # add it all to main layout and show
         self.setLayout(main_layout)
         self.show()
 
@@ -272,16 +351,20 @@ class MainWindow(MyWidget):
         # start the worker thread to run inference
         self.worker_thread.start()
 
-    def on_launch_napari_button_clicked(self) -> None:
-        """
+    def on_launch_napari_button_clicked(self):
+        ''' 
         Launches the napari window after the image is selected.
-        """
-        if not self.app.cur_selected_img or "_seg.tiff" in self.app.cur_selected_img:
-            message_text = "Please first select an image you wish to visualise. The selected image must be an original image, not a mask."
+        '''
+        if not self.app.cur_selected_img or '_seg.tiff' in self.app.cur_selected_img:
+            message_text = "Please first select an image you wish to visualize. The selected image must be an original image, not a mask."
             _ = self.create_warning_box(message_text, message_title="Warning")
         else:
-            self.nap_win = NapariWindow(self.app)
-            self.nap_win.show()
+            try:
+                self.nap_win = NapariWindow(self.app)
+                self.nap_win.show() 
+            except Exception as e:
+                message_text = f"An error occurred while opening the Napari window: {str(e)}"
+                _ = self.create_warning_box(message_text, message_title="Error")
 
     def on_finished(self, result: tuple) -> None:
         """

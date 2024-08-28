@@ -17,6 +17,7 @@ from dcp_client.utils.fsimagestorage import FilesystemImageStorage
 from dcp_client.utils.sync_src_dst import DataRSync
 from dcp_client.utils import settings
 
+from unittest.mock import MagicMock
 
 @pytest.fixture()
 def setup_global_variable():
@@ -65,7 +66,7 @@ def app(qtbot, setup_global_variable):
 
 def test_main_window_setup(qtbot, app, setup_global_variable):
     settings.accepted_types = setup_global_variable
-    assert app.title == "Data Overview"
+    assert app.title == "DCP: Data Overview"
 
 
 def test_item_train_selected(qtbot, app, setup_global_variable):
@@ -140,16 +141,31 @@ def test_on_finished(qtbot, app):
     assert app.train_button.isEnabled()
     assert app.inference_button.isEnabled()
     assert app.worker_thread is None
+    
+'''
+# what is the intended use case here? How would an exception be triggered?
 
+def test_launch_napari_button_clicked_with_selected_img(qtbot, app):
+    
+    with pytest.raises(Exception) as exc_info:
+        index = app.list_view_eval.indexAt(app.list_view_eval.viewport().rect().topLeft())
+        app.on_item_eval_selected(index)
+        #window = MainWindow(app.app)
+        app.nap_win = MagicMock(side_effect=Exception("Test exception"))
+        app.on_launch_napari_button_clicked()
 
+    assert "An error occurred while opening the Napari window" in str(exc_info.value)
+'''
+
+'''
 def test_launch_napari_button_click_without_selection(qtbot, app):
     # Try clicking the view button without having selected an image
     app.sim = True
     qtbot.mouseClick(app.launch_nap_button, Qt.LeftButton)
     assert not hasattr(app, "nap_win")
 
-
-def test_launch_napari_button_click(qtbot, app):
+# removing this test as launch_nap_button does not exist anymore!
+def test_launch_napari_button_click(qtbot, app, setup_global_variable):
     settings.accepted_types = setup_global_variable
     # Simulate selection of an image to view before clicking on view button
     index = app.list_view_eval.indexAt(app.list_view_eval.viewport().rect().topLeft())
@@ -157,11 +173,13 @@ def test_launch_napari_button_click(qtbot, app):
     # Simulate file click
     QTest.mouseClick(app.list_view_eval.viewport(), Qt.LeftButton, pos=pos)
     app.on_item_eval_selected(index)
+    print('hhhhhh', app.app.cur_selected_img)
     # Now click the view button
     qtbot.mouseClick(app.launch_nap_button, Qt.LeftButton)
     # Assert that the napari window has launched
     assert hasattr(app, "nap_win")
     assert app.nap_win.isVisible()
+'''
 
 
 @pytest.fixture(scope="session", autouse=True)

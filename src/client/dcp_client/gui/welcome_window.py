@@ -9,7 +9,8 @@ from qtpy.QtWidgets import (
     QFileDialog,
     QLineEdit,
 )
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, QEvent
+
 
 from dcp_client.gui.main_window import MainWindow
 from dcp_client.gui._my_widget import MyWidget
@@ -33,31 +34,66 @@ class WelcomeWindow(MyWidget):
         """
         super().__init__()
         self.app = app
-        self.resize(200, 200)
-        self.title = "Select Dataset"
-        self.main_layout = QVBoxLayout()
-        input_layout = QHBoxLayout()
-        label = QLabel(self)
-        label.setText(
-            "Welcome to Helmholtz AI data centric tool! Please select your dataset folder"
-        )
-        self.main_layout.addWidget(label)
+        self.setWindowTitle("DCP")
+        self.setStyleSheet("background-color: #f3f3f3;")
+        self.resize(590, 250)
 
+        self.main_layout = QVBoxLayout()
+    
+        title_label = QLabel("Welcome to the Helmholtz AI Data-Centric Tool!")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet(
+            "font-size: 20px; font-weight: bold; color: #015998;"
+        )
+        self.main_layout.addWidget(title_label)
+
+        instructions_label = QLabel("Please select your dataset folders:")
+        instructions_label.setAlignment(Qt.AlignLeft)# AlignCenter)
+        instructions_label.setStyleSheet(
+            "font-size: 14px; color: #000000;"
+        )
+        self.main_layout.addWidget(instructions_label)
+
+
+        input_layout = QHBoxLayout()
+        
         self.text_layout = QVBoxLayout()
         self.path_layout = QVBoxLayout()
         self.button_layout = QVBoxLayout()
 
         val_label = QLabel(self)
-        val_label.setText("Uncurated dataset path:")
+        val_label.setText('Uncurated dataset:')
+
+
         inprogr_label = QLabel(self)
-        inprogr_label.setText("Curation in progress path:")
+        inprogr_label.setText("In progress directory:")
         train_label = QLabel(self)
-        train_label.setText("Curated dataset path:")
+        train_label.setText('Curated dataset:')
+
+
         self.text_layout.addWidget(val_label)
         self.text_layout.addWidget(inprogr_label)
         self.text_layout.addWidget(train_label)
 
         self.val_textbox = QLineEdit(self)
+        self.val_textbox.setPlaceholderText("Double-click to browse")
+        # self.val_textbox.setToolTip("Double-click to browse")
+       
+        self.val_textbox.textEdited.connect(lambda x: self.on_text_changed(self.val_textbox, "eval", x))
+        self.val_textbox.installEventFilter(self)
+
+        self.inprogr_textbox = QLineEdit(self)
+        self.inprogr_textbox.setPlaceholderText("Double-click to browse")
+        # self.inprogr_textbox.setToolTip("Double-click to browse")
+        self.inprogr_textbox.textEdited.connect(lambda x: self.on_text_changed(self.inprogr_textbox, "inprogress", x))
+        self.inprogr_textbox.installEventFilter(self)
+
+        self.train_textbox = QLineEdit(self)
+        self.train_textbox.setPlaceholderText("Double-click to browse")
+        # self.train_textbox.setToolTip("Double-click to browse")
+        self.train_textbox.textEdited.connect(lambda x: self.on_text_changed(self.train_textbox, "train", x))
+        self.train_textbox.installEventFilter(self)
+        '''
         self.val_textbox.textEdited.connect(
             lambda x: self.on_text_changed(self.val_textbox, "eval", x)
         )
@@ -71,24 +107,66 @@ class WelcomeWindow(MyWidget):
         self.train_textbox.textEdited.connect(
             lambda x: self.on_text_changed(self.train_textbox, "train", x)
         )
+        '''
 
         self.path_layout.addWidget(self.val_textbox)
         self.path_layout.addWidget(self.inprogr_textbox)
         self.path_layout.addWidget(self.train_textbox)
-
+        '''
         self.file_open_button_val = QPushButton("Browse", self)
+        self.file_open_button_val.setFixedSize(80, 30)
+        self.file_open_button_val.setStyleSheet(
+            """QPushButton 
+            { 
+                  background-color: #3d81d1;
+                  font-size: 11px; 
+                  font-weight: bold;
+                  color: #ffffff; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+            "QPushButton:hover { background-color: #006FBA; }"
+        )
         self.file_open_button_val.show()
         self.file_open_button_val.clicked.connect(self.browse_eval_clicked)
+
         self.file_open_button_prog = QPushButton("Browse", self)
+        self.file_open_button_prog.setFixedSize(80, 30)
+        self.file_open_button_prog.setStyleSheet(
+            """QPushButton 
+            { 
+                  background-color: #3d81d1;
+                  font-size: 11px; 
+                  font-weight: bold;
+                  color: #ffffff; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+            "QPushButton:hover { background-color: #006FBA; }"
+        )
         self.file_open_button_prog.show()
         self.file_open_button_prog.clicked.connect(self.browse_inprogr_clicked)
+
+
         self.file_open_button_train = QPushButton("Browse", self)
+        self.file_open_button_train.setFixedSize(80, 30)
+        self.file_open_button_train.setStyleSheet(
+            """QPushButton 
+            { 
+                  background-color: #3d81d1;
+                  font-size: 11px; 
+                  font-weight: bold;
+                  color: #ffffff; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+            "QPushButton:hover { background-color: #006FBA; }"
+           
+        )
         self.file_open_button_train.show()
         self.file_open_button_train.clicked.connect(self.browse_train_clicked)
+
         self.button_layout.addWidget(self.file_open_button_val)
         self.button_layout.addWidget(self.file_open_button_prog)
         self.button_layout.addWidget(self.file_open_button_train)
-
+        '''
         input_layout.addLayout(self.text_layout)
         input_layout.addLayout(self.path_layout)
         input_layout.addLayout(self.button_layout)
@@ -96,6 +174,18 @@ class WelcomeWindow(MyWidget):
 
         self.start_button = QPushButton("Start", self)
         self.start_button.setFixedSize(120, 30)
+        self.start_button.setStyleSheet(
+            """QPushButton 
+            { 
+                  background-color: #3d81d1;
+                  font-size: 12px; 
+                  font-weight: bold;
+                  color: #ffffff; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+            "QPushButton:hover { background-color: #7bc432; }"
+          
+        )
         self.start_button.show()
         # check if we need to upload data to server
         self.done_upload = False  # we only do once
@@ -152,10 +242,21 @@ class WelcomeWindow(MyWidget):
         elif field_name == "inprogress":
             self.app.inprogr_data_path = text
         field_obj.setText(text)
+        
+    def eventFilter(self, obj, event):
+        ''' Event filter to capture double-click events on QLineEdit widgets '''
+        if event.type() == QEvent.MouseButtonDblClick:
+            if obj == self.val_textbox:
+                self.browse_eval_clicked()
+            elif obj == self.inprogr_textbox:
+                self.browse_inprogr_clicked()
+            elif obj == self.train_textbox:
+                self.browse_train_clicked()
+        return super().eventFilter(obj, event)
+    
 
-    def browse_inprogr_clicked(self) -> None:
-        """
-        Activates  when the user clicks the button to choose the curation in progress directory (QFileDialog) and
+    def browse_inprogr_clicked(self):
+        """ Activates  when the user clicks the button to choose the curation in progress directory (QFileDialog) and 
         displays the name of the evaluation directory chosen in the validation textbox line (QLineEdit).
         """
 

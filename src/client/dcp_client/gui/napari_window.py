@@ -31,8 +31,9 @@ class NapariWindow(MyWidget):
         super().__init__()
         self.app = app
         self.setWindowTitle("napari viewer")
+        self.setStyleSheet("background-color: #262930;")
         screen_size = QGuiApplication.primaryScreen().geometry()
-        self.resize(int(screen_size.width()*0.9), int(screen_size.height()*0.8))
+        self.resize(int(screen_size.width()*0.8), int(screen_size.height()*0.8))
 
         # Load image and get corresponding segmentation filenames
         img = self.app.load_image()
@@ -95,7 +96,17 @@ class NapariWindow(MyWidget):
 
             if len(self.layer.data.shape) > 2:
                 # User hint
-                message_label = QLabel("Choose an active mask")
+                message_label = QLabel('Choose an active mask')
+                message_label.setStyleSheet(
+                """
+                    font-size: 12px;
+                    font-weight: bold; 
+                    background-color: #262930;
+                    color: #D1D2D4;
+                    border-radius: 5px; 
+                    padding: 8px 16px;"""
+                )
+
                 message_label.setAlignment(Qt.AlignRight)
                 layout.addWidget(message_label, 1, 0)
 
@@ -110,7 +121,20 @@ class NapariWindow(MyWidget):
 
                 # when user has chosen the mask, we don't want to change it anymore to avoid errors
                 lock_button = QPushButton("Confirm Final Choice")
-                lock_button.setEnabled(False)
+                lock_button.setStyleSheet(
+                """QPushButton 
+                        { 
+                            background-color: #5A626C;
+                            font-size: 12px; 
+                            font-weight: bold;
+                            color: #D1D2D4; 
+                            border-radius: 5px;
+                            padding: 8px 16px; }"""
+                "QPushButton:hover { background-color: #6A7380; }"
+                "QPushButton:pressed { background-color: #6A7380; }" 
+                    )
+
+                lock_button.setEnabled(True)
                 lock_button.clicked.connect(self.set_editable_mask)
 
                 layout.addWidget(lock_button, 1, 2)
@@ -118,19 +142,85 @@ class NapariWindow(MyWidget):
             self.layer = None
 
         # add buttons for moving images to other dirs
-        add_to_inprogress_button = QPushButton(
-            "Move to 'Curatation in progress' folder"
+        add_to_inprogress_button = QPushButton('Move to \'Curatation in progress\' folder')
+        add_to_inprogress_button.setStyleSheet(
+        """QPushButton 
+            { 
+                  background-color: #0064A8;
+                  font-size: 12px; 
+                  font-weight: bold;
+                  color: #D1D2D4; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+        "QPushButton:hover { background-color: #006FBA; }"
+        "QPushButton:pressed { background-color: #006FBA; }" 
+               
+         
         )
         layout.addWidget(add_to_inprogress_button, 2, 0, 1, 2)
         add_to_inprogress_button.clicked.connect(
             self.on_add_to_inprogress_button_clicked
         )
 
-        add_to_curated_button = QPushButton("Move to 'Curated dataset' folder")
+        add_to_curated_button = QPushButton('Move to \'Curated dataset\' folder')
+        add_to_curated_button.setStyleSheet(
+        """QPushButton 
+            { 
+                  background-color: #0064A8;
+                  font-size: 12px; 
+                  font-weight: bold;
+                  color: #D1D2D4; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+        "QPushButton:hover { background-color: #006FBA; }"
+        "QPushButton:pressed { background-color: #006FBA; }" 
+         
+        )
+
         layout.addWidget(add_to_curated_button, 2, 2, 1, 2)
         add_to_curated_button.clicked.connect(self.on_add_to_curated_button_clicked)
 
         self.setLayout(layout)
+
+        remove_from_dataset_button = QPushButton('Remove from dataset')
+        remove_from_dataset_button.setStyleSheet(
+        """QPushButton 
+            { 
+                  background-color: #0064A8;
+                  font-size: 12px; 
+                  font-weight: bold;
+                  color: #D1D2D4; 
+                  border-radius: 5px;
+                  padding: 8px 16px; }"""
+        "QPushButton:hover { background-color: #006FBA; }"
+        "QPushButton:pressed { background-color: #006FBA; }" 
+         
+        )
+        layout.addWidget(remove_from_dataset_button, 3, 0, 1, 4)
+        remove_from_dataset_button.clicked.connect(self.on_remove_from_dataset_button_clicked)
+
+    def on_remove_from_dataset_button_clicked(self) -> None:
+        """
+        Defines what happens when the "Remove from dataset" button is clicked.
+        """
+        '''
+        try:
+            # get image name
+            files_to_remove = [self.viewer.layers.selection.active.name]
+        except AttributeError:
+            message_text = "Please first select the image in the layer list."
+            _ = self.create_warning_box(message_text, message_title="Warning")
+            return
+        '''
+        rmv_files = [self.app.cur_selected_img]
+        self.app.search_segs()
+        rmv_files.extend(self.app.seg_filepaths)
+        # Delete the image and corresponding masks from the dataset
+        self.app.delete_images(rmv_files)
+        self.app.cur_selected_img = ""
+        self.app.seg_filepaths = []
+        self.viewer.close()
+        self.close()
 
     def set_editable_mask(self) -> None:
         """
@@ -160,6 +250,9 @@ class NapariWindow(MyWidget):
         Is triggered each time the user switches the viewer between the mask channels. At this point the class mask
         needs to be updated according to the changes made tot the instance segmentation mask.
         """
+
+        if self.app.cur_selected_img=="": return # because this also gets triggered when removing outlier
+
         self.active_mask_index = self.viewer.dims.current_step[0]
         masks = deepcopy(self.layer.data)
 

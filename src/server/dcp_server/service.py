@@ -12,13 +12,14 @@ models_module = __import__("models")
 segmentation_module = __import__("segmentationclasses")
 
 # Import configuration
-rel_path = os.path.dirname(os.path.realpath(__file__))
-service_config = read_config("service", config_path=os.path.join(rel_path, "config.yaml"))
-model_config = read_config("model", config_path=os.path.join(rel_path, "config.yaml"))
-data_config = read_config("data", config_path=os.path.join(rel_path, "config.yaml"))
-train_config = read_config("train", config_path=os.path.join(rel_path, "config.yaml"))
-eval_config = read_config("eval", config_path=os.path.join(rel_path, "config.yaml"))
-setup_config = read_config("setup", config_path=os.path.join(rel_path, "config.yaml"))
+script_path = os.path.abspath(__file__)
+config_path = os.path.join(os.path.dirname(script_path), "config.yaml")
+service_config = read_config("service", config_path=config_path)
+model_config = read_config("model", config_path=config_path)
+data_config = read_config("data", config_path)
+train_config = read_config("train", config_path)
+eval_config = read_config("eval", config_path)
+setup_config = read_config("setup", config_path)
 
 # instantiate the model
 

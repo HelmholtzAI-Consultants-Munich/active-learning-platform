@@ -22,6 +22,7 @@ setup(
         "torchvision",
         "napari-sam @ git+https://github.com/christinab12/napari-sam.git@main",
         "bentoml[grpc]>=1.2.5",
+        "opencv",
     ],
     extras_require={
         "dev": [

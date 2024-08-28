@@ -49,7 +49,7 @@ def app_remote(qtbot):
 
 
 def test_welcome_window_initialization(app):
-    assert app.title == "Select Dataset"
+    assert app.windowTitle() == "DCP"
     assert app.val_textbox.text() == ""
     assert app.inprogr_textbox.text() == ""
     assert app.train_textbox.text() == ""
